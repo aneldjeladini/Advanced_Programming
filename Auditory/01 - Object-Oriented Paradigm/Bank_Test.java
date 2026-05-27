@@ -155,12 +155,18 @@ public class Bank_Test {
         Bank bank = new Bank(accounts);
         System.out.println(bank);
 
+        System.out.println();
+        System.out.println("Total assets: " + bank.totalAssests() + '$');
+        System.out.println();
+
         System.out.println("===========================================");
         System.out.println("Adding interest to accounts");
         System.out.println("===========================================\n");
 
         bank.addInterest();
         System.out.println(bank);
+        System.out.println();
+        System.out.println("Total assets: " + bank.totalAssests() + '$');
         System.out.println();
 
         System.out.println("===========================================");
