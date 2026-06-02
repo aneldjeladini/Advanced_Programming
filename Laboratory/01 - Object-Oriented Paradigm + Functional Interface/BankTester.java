@@ -1,4 +1,6 @@
 import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 class Account{
@@ -231,6 +233,19 @@ class Bank{
     public int hashCode() {
         return Objects.hash(name, Arrays.hashCode(accounts), totalSumTransfers, totalProvision);
     }
+
+    // ============================================== ADDITIONAL METHOD ======================================================== //
+
+//    public void forEachConditional(Predicate<Account> predicate, Consumer<Account> consumer){
+//        for (int i  = 0; i < accounts.length; i++){
+//            if (predicate.test(accounts[i])){
+//                consumer.accept(accounts[i]);
+//            }
+//        }
+//    }
+
+    // ====================================================================================================================== //
+
 }
 
 public class BankTester {
@@ -376,7 +391,18 @@ public class BankTester {
                     break;
             }
         }
+
+        // ================================= ADDITIONAL METHOD TEST ============================================= //
+
+
+//        Predicate<Account> predicate = a -> a.getBalance() > 10000;
+//        Consumer<Account> consumer = a -> a.setBalance(a.getBalance() + 100);
+//        bank.forEachConditional(predicate,consumer);
+
+        // ========================================================================================================//
+
     }
+
 
     private static Transaction getTransaction(String description, int from_idx, int to_idx, double amount, double o, Bank bank) {
         switch (description) {
@@ -389,6 +415,5 @@ public class BankTester {
         }
         return null;
     }
-
 
 }
