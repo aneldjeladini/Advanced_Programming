@@ -1,5 +1,7 @@
+import javax.swing.tree.TreeCellRenderer;
 import java.io.*;
 import java.util.*;
+import java.util.function.Function;
 
 class Movie{
     private String title;
@@ -39,9 +41,13 @@ class Movie{
 
 class MovieTheater{
     private List<Movie> movies;
+    private Map<String,Movie> bestMoviesByGenre; // for additional task
+    Map<String, Set<String>> actorsByMovie; // for additional task
 
     public MovieTheater(){
         this.movies = new ArrayList<>();
+        this.bestMoviesByGenre = new TreeMap<>();
+        this.actorsByMovie = new HashMap<>();
     }
 
     public void readMovies(InputStream is) throws IOException {
@@ -80,6 +86,36 @@ class MovieTheater{
                 .sorted(Comparator.comparingDouble(Movie::getAvgRating).reversed().thenComparing(Movie::getTitle))
                 .forEach(System.out::println);
     }
+
+    // =============================== ADDITIONAL METHODS ================================= //
+
+    public void printBestMovieByGenre(){
+        movies.forEach(m -> {
+            bestMoviesByGenre.putIfAbsent(m.getGenre(),null);
+        });
+
+        bestMoviesByGenre.keySet()
+                .forEach(g -> {
+                   Movie best = movies.stream()
+                           .filter(m -> m.getGenre().equals(g))
+                           .max(Comparator.comparingDouble(Movie::getAvgRating))
+                           .orElse(null);
+
+                   if (best != null){
+                       bestMoviesByGenre.put(g,best);
+                       System.out.println("Best " + g + " movie:");
+                       System.out.println(best);
+                   }
+                });
+    }
+
+    public void addActors(String movieTitle, List<String> actors){
+        Set<String> actorSet = new HashSet<>(actors);
+        actorsByMovie.putIfAbsent(movieTitle, actorSet);
+    }
+
+    
+    // ==================================================================================== //
 
 }
 
