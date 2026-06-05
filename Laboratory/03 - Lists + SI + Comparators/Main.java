@@ -1,197 +1,138 @@
 import java.io.*;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.function.Function;
 
-// todo: complete the implementation of the Ad, AdRequest, and AdNetwork classes
+class Movie{
+    private String title;
+    private String genre;
+    private int year;
+    private double avgRating;
 
-class Ad implements Comparable<Ad>{
-    private String id;
-    private String category;
-    private double bidValue;
-    private double ctr;
-    private String content;
-
-    public Ad(String id, String category, double bidValue, double ctr, String content) {
-        this.id = id;
-        this.category = category;
-        this.bidValue = bidValue;
-        this.ctr = ctr;
-        this.content = content;
+    public Movie(String title,String genre,int year,double avgRating){
+        this.title = title;
+        this.genre = genre;
+        this.year = year;
+        this.avgRating = avgRating;
     }
 
-    public double getBidValue() {
-        return bidValue;
+    public String getTitle() {
+        return title;
     }
 
-    public String getId() {
-        return id;
+    public String getGenre() {
+        return genre;
     }
 
-    public String getCategory() {
-        return category;
+    public int getYear() {
+        return year;
     }
 
-    public double getCtr() {
-        return ctr;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    @Override
-    public int compareTo(Ad other) {
-         int result = Double.compare(other.bidValue,this.bidValue);
-
-         if (result == 0){
-             result = this.id.compareTo(other.id);
-         }
-
-         return result;
+    public double getAvgRating() {
+        return avgRating;
     }
 
     @Override
     public String toString(){
-        return String.format("%s %s (bid=%.2f, ctr=%.2f%%) %s", id,category,bidValue,ctr*100,content);
-    }
-
-}
-
-class AdRequest{
-    private String id;
-    private String category;
-    private double floorBid;
-    private String keywords;
-
-    public AdRequest(String id, String category, double floorBid, String keywords) {
-        this.id = id;
-        this.category = category;
-        this.floorBid = floorBid;
-        this.keywords = keywords;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public String getCategory() {
-        return category;
-    }
-
-    public double getFloorBid() {
-        return floorBid;
-    }
-
-    public String getKeywords() {
-        return keywords;
-    }
-
-    @Override
-    public String toString(){
-        return String.format("%s %s (floor=%.2f): %s", id,category,floorBid,keywords);
+        return String.format("%s, %s, %d, %.2f",title,genre,year,avgRating);
     }
 }
 
 
-class AdNetwork {
-    private List<Ad> ads;
+class MovieTheater{
+    private List<Movie> movies;
+    private Map<String,Movie> bestMoviesByGenre; // for additional task
+    Map<String, Set<String>> actorsByMovie; // for additional task
 
-    public AdNetwork(){
-        this.ads = new ArrayList<>();
+    public MovieTheater(){
+        this.movies = new ArrayList<>();
+        this.bestMoviesByGenre = new TreeMap<>();
+        this.actorsByMovie = new HashMap<>();
     }
 
-    public void readAds(BufferedReader in) throws IOException {
-        BufferedReader br = in;
+    public void readMovies(InputStream is) throws IOException {
+        BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
-        while (true){
-            String line = br.readLine();
-            if (line == null || line.isEmpty()) break;
+        int numMovies = Integer.parseInt(br.readLine());
 
-            String [] parts = line.trim().split("\\s+");
-            StringBuilder sb = new StringBuilder();
-            for (int i = 4; i < parts.length; i++){
-                sb.append(parts[i]).append(" ");
-            }
-            if (sb.length() > 0) {
-                sb.setLength(sb.length() - 1);
-            }
+        for (int i = 0; i < numMovies; i++){
+            String name = br.readLine();
+            String genre = br.readLine();
+            int year = Integer.parseInt(br.readLine());
+            String [] ratings = br.readLine().trim().split("\\s+");
+            double avgRating = Arrays.stream(ratings)
+                    .mapToInt(Integer::parseInt)
+                    .average()
+                    .getAsDouble();
 
-            ads.add(new Ad(parts[0],parts[1],Double.parseDouble(parts[2]),Double.parseDouble(parts[3]),sb.toString()));
+            movies.add(new Movie(name,genre,year,avgRating));
         }
     }
 
+    public void printByGenreAndTitle(){
+        movies.stream()
+                .sorted(Comparator.comparing(Movie::getGenre).thenComparing(Movie::getTitle))
+                .forEach(System.out::println);
+    }
 
-    public List<Ad> placeAds(BufferedReader in, int k, PrintWriter outputStream) throws IOException {
-        BufferedReader br = new BufferedReader(in);
-        PrintWriter pw = outputStream;
+    public void printByYearAndTitle(){
+        movies.stream()
+                .sorted(Comparator.comparingInt(Movie::getYear).thenComparing(Movie::getTitle))
+                .forEach(System.out::println);
+    }
 
-        String [] parts = br.readLine().trim().split("\\s+");
-        StringBuilder keywords = new StringBuilder();
-        for (int i = 3; i < parts.length; i++){
-            keywords.append(parts[i]).append(" ");
-        }
-        if (keywords.length() > 0) {
-            keywords.setLength(keywords.length() - 1);
-        }
+    public void printByRatingAndTitle(){
+        movies.stream()
+                .sorted(Comparator.comparingDouble(Movie::getAvgRating).reversed().thenComparing(Movie::getTitle))
+                .forEach(System.out::println);
+    }
 
-        AdRequest request = new AdRequest(parts[0],parts[1],Double.parseDouble(parts[2]),keywords.toString());
+    // =============================== ADDITIONAL METHODS ================================= //
 
-        Comparator<Ad> scoreComparator = Comparator.comparingDouble(a -> relevanceScore(a,request) + 5.0 * a.getBidValue() + 100.0 * a.getCtr());
+    public void printBestMovieByGenre(){
+        movies.forEach(m -> {
+            bestMoviesByGenre.putIfAbsent(m.getGenre(),null);
+        });
 
-        List<Ad> topKAds = ads.stream()
-                .filter(a -> a.getBidValue() >= request.getFloorBid())
-                .sorted(scoreComparator.reversed())
-                .limit(k)
-                .sorted()
-                .collect(Collectors.toList());
+        bestMoviesByGenre.keySet()
+                .forEach(g -> {
+                    Movie best = movies.stream()
+                            .filter(m -> m.getGenre().equals(g))
+                            .max(Comparator.comparingDouble(Movie::getAvgRating))
+                            .orElse(null);
 
-        pw.println("Top ads for request " + request.getId() + ":");
+                    if (best != null){
+                        bestMoviesByGenre.put(g,best);
+                        System.out.println("Best " + g + " movie:");
+                        System.out.println(best);
+                    }
+                });
+    }
 
-        topKAds.forEach(pw::println);
-
-        pw.flush();
-
-
-        return topKAds;
-
+    public void addActors(String movieTitle, List<String> actors){
+        Set<String> actorSet = new HashSet<>(actors);
+        actorsByMovie.putIfAbsent(movieTitle, actorSet);
     }
 
 
+    // ==================================================================================== //
 
-
-    private int relevanceScore(Ad ad, AdRequest req) {
-        int score = 0;
-        if (ad.getCategory().equalsIgnoreCase(req.getCategory())) score += 10;
-        String[] adWords = ad.getContent().toLowerCase().split("\\s+");
-        String[] keywords = req.getKeywords().toLowerCase().split("\\s+");
-        for (String kw : keywords) {
-            for (String aw : adWords) {
-                if (kw.equals(aw)) score++;
-            }
-        }
-        return score;
-    }
 }
 
-public class Main {
-    public static void main(String[] args) throws IOException {
-        AdNetwork network = new AdNetwork();
-        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-        PrintWriter pw = new PrintWriter(new OutputStreamWriter(System.out));
 
-        int k = Integer.parseInt(br.readLine().trim());
-
-        if (k == 0) {
-            network.readAds(br);
-            network.placeAds(br, 1, pw);
-        } else if (k == 1) {
-            network.readAds(br);
-            network.placeAds(br, 3, pw);
-        } else {
-            network.readAds(br);
-            network.placeAds(br, 8, pw);
+public class MovieTheaterTester {
+    public static void main(String[] args) {
+        MovieTheater mt = new MovieTheater();
+        try {
+            mt.readMovies(System.in);
+        } catch (IOException e) {
+            System.out.println(e.getMessage());
+            return;
         }
-
-        pw.flush();
+        System.out.println("SORTING BY RATING");
+        mt.printByRatingAndTitle();
+        System.out.println("\nSORTING BY GENRE");
+        mt.printByGenreAndTitle();
+        System.out.println("\nSORTING BY YEAR");
+        mt.printByYearAndTitle();
     }
 }
