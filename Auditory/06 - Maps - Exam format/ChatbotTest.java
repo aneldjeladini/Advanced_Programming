@@ -42,11 +42,11 @@ class LLMModelDetails{
     }
 }
 
-class AttachMent{
+class Attachment{
     String fileName;
     int fileSizeInMb;
 
-    public AttachMent(String fileName, int fileSizeInMb) {
+    public Attachment(String fileName, int fileSizeInMb) {
         this.fileName = fileName;
         this.fileSizeInMb = fileSizeInMb;
     }
@@ -67,10 +67,10 @@ class Interaction{
     private long timestampQuestion;
     private String answer;
     private long timestampAnswer;
-    List<AttachMent> attachments;
+    List<Attachment> attachments;
     LLMModelDetails modelDetails;
 
-    public Interaction(String userId, String sessionId, String question, long timestampQuestion, String answer, long timestampAnswer, List<AttachMent> attachments,LLMModelDetails modelDetails) {
+    public Interaction(String userId, String sessionId, String question, long timestampQuestion, String answer, long timestampAnswer, List<Attachment> attachments,LLMModelDetails modelDetails) {
         this.userId = userId;
         this.sessionId = sessionId;
         this.question = question;
@@ -105,7 +105,7 @@ class Interaction{
         return timestampAnswer;
     }
 
-    public List<AttachMent> getAttachments() {
+    public List<Attachment> getAttachments() {
         return attachments;
     }
 
@@ -127,7 +127,7 @@ class Interaction{
 
     public int totalAttachmentsMb(){
         return attachments.stream()
-                .mapToInt(AttachMent::getFileSizeInMb)
+                .mapToInt(Attachment::getFileSizeInMb)
                 .sum();
     }
 
@@ -219,7 +219,7 @@ class User{
         this.sessions = new HashMap<>();
     }
 
-    public void addInteraction(String sessionId, String question, long timestampQuestion, String answer, long timestampAnswer, List<AttachMent> attachMents,LLMModelDetails llmModelDetails){
+    public void addInteraction(String sessionId, String question, long timestampQuestion, String answer, long timestampAnswer, List<Attachment> attachMents,LLMModelDetails llmModelDetails){
         sessions.putIfAbsent(sessionId, new Session(sessionId));
 
         Session s = sessions.get(sessionId);
@@ -227,6 +227,13 @@ class User{
         s.addInteraction(new Interaction(userId,sessionId,question,timestampQuestion,answer,timestampAnswer,attachMents,llmModelDetails));
     }
 
+    public String getUserId() {
+        return userId;
+    }
+
+    public Map<String, Session> getSessions() {
+        return sessions;
+    }
 
     public void printDetails() {
         sessions.values()
@@ -236,30 +243,111 @@ class User{
     }
 
 
+    public Interaction longestProcessingTImeInteractions(){
+        return sessions.values()
+                .stream()
+                .flatMap(session -> session.interactions.stream())
+                .max(Comparator.comparing(Interaction::processingTime))
+                .get();
+    }
 
+    public Interaction mostExpensiveInteractions(){
+        return sessions.values()
+                .stream()
+                .flatMap(session -> session.interactions.stream())
+                .max(Comparator.comparing(Interaction::price))
+                .get();
+    }
 
 }
 
 
 
 
-class ChatBot{
+class Chatbot{
     private LLMModelDetails llmModelDetails;
     private List<String> notSupportedFiles;
     private int allowedAttachmentsSize;
     Map<String,User> users;
 
 
-    public ChatBot(LLMModelDetails llmModelDetails, List<String> notSupportedFiles, int allowedAttachmentsSize) {
+    public Chatbot(LLMModelDetails llmModelDetails, List<String> notSupportedFiles, int allowedAttachmentsSize) {
         this.llmModelDetails = llmModelDetails;
         this.notSupportedFiles = notSupportedFiles;
         this.allowedAttachmentsSize = allowedAttachmentsSize;
         this.users = new TreeMap<>();
     }
 
-    public void addInteraction(String userId, String sessionId, String question, long timestampQuestion,String answer,long timestampAnswer,List<AttachMent> attachments){
+    public void addInteraction(String userId, String sessionId, String question, long timestampQuestion,String answer,long timestampAnswer,List<Attachment> attachments) throws AttachmentsSizeExceededException, FileNotSupportedException {
         Interaction interaction = new Interaction(userId,sessionId,question,timestampQuestion,answer,timestampAnswer,attachments,llmModelDetails);
-        if ()
+
+        int sum = attachments.stream()
+                .mapToInt(a -> a.fileSizeInMb)
+                .sum();
+
+        if (sum > allowedAttachmentsSize){
+            throw new AttachmentsSizeExceededException("exceed");
+        }
+
+        for (String extension : notSupportedFiles){
+            for (Attachment attachment : attachments){
+                if (attachment.fileName.endsWith(extension)){
+                    throw new FileNotSupportedException(extension);
+                }
+            }
+        }
+
+        users.putIfAbsent(userId,new User(userId));
+
+        User user = users.get(userId);
+
+        user.addInteraction(sessionId,question,timestampQuestion,answer,timestampAnswer,attachments,llmModelDetails);
+
+    }
+
+
+    public void printConversation(String userId, String sessionId){
+        User current = null;
+        if (users.containsKey(userId)){
+            current = users.get(userId);
+        }
+
+        if (current != null){
+            Session session = null;
+            if (current.getSessions().containsKey(sessionId)){
+                session = current.getSessions().get(sessionId);
+                if (session != null){
+                    session.printInteractions();
+                }
+            }
+        }
+
+    }
+
+    public void printSessionDetails(String userId, String sessionId){
+        users.get(userId).getSessions().get(sessionId).printDetails();
+    }
+
+    public void printUserDetails(String userId){
+        System.out.println("User: " + userId);
+        System.out.println("Sessions:");
+        users.get(userId).printDetails();
+    }
+
+    public void longestProcessingTimeInteractions() {
+        users.values().forEach(u -> {
+            System.out.println("User: " + u.getUserId());
+            System.out.println("Longest processing time interaction:");
+            System.out.println(u.longestProcessingTImeInteractions());
+        });
+    }
+
+    public void mostExpensiveInteractions() {
+        users.values().forEach(u -> {
+            System.out.println("User: " + u.getUserId());
+            System.out.println("Most expensive interaction:");
+            System.out.println(u.mostExpensiveInteractions());
+        });
     }
 }
 
